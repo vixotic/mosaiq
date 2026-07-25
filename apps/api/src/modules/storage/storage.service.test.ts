@@ -35,7 +35,9 @@ describe("StorageService", () => {
 
   it("rejects invalid content regardless of filename", async () => {
     const storage = new StorageService();
-    await expect(storage.inspect(Buffer.from("not a jpeg"))).rejects.toBeInstanceOf(InvalidImageError);
+    await expect(storage.inspect(Buffer.from("not a jpeg"))).rejects.toBeInstanceOf(
+      InvalidImageError,
+    );
   });
 
   it("prevents storage traversal", () => {

@@ -65,10 +65,15 @@ export class StorageService implements OnModuleInit {
     }
     let metadata: sharp.Metadata;
     try {
-      metadata = await sharp(buffer, { animated: true, limitInputPixels: this.config.MAX_IMAGE_PIXELS })
-        .metadata();
+      metadata = await sharp(buffer, {
+        animated: true,
+        limitInputPixels: this.config.MAX_IMAGE_PIXELS,
+      }).metadata();
     } catch {
-      throw new InvalidImageError("INVALID_IMAGE", "The file is corrupt or is not a supported image.");
+      throw new InvalidImageError(
+        "INVALID_IMAGE",
+        "The file is corrupt or is not a supported image.",
+      );
     }
     if (!metadata.width || !metadata.height) {
       throw new InvalidImageError("INVALID_IMAGE", "The image dimensions could not be read.");
@@ -85,7 +90,10 @@ export class StorageService implements OnModuleInit {
             ? ({ mimeType: "image/webp", extension: "webp" } as const)
             : null;
     if (!detected) {
-      throw new InvalidImageError("UNSUPPORTED_FORMAT", "Only JPEG, PNG, and static WebP are supported.");
+      throw new InvalidImageError(
+        "UNSUPPORTED_FORMAT",
+        "Only JPEG, PNG, and static WebP are supported.",
+      );
     }
     const orientationSwapsDimensions = [5, 6, 7, 8].includes(metadata.orientation ?? 1);
     return {
@@ -97,7 +105,10 @@ export class StorageService implements OnModuleInit {
     };
   }
 
-  async save(buffer: Buffer, info: InspectedImage): Promise<{ storageKey: string; thumbnailKey: string }> {
+  async save(
+    buffer: Buffer,
+    info: InspectedImage,
+  ): Promise<{ storageKey: string; thumbnailKey: string }> {
     const id = randomUUID();
     const storageKey = `originals/${id}.${info.extension}`;
     const thumbnailKey = `thumbnails/${id}.webp`;
