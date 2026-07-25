@@ -1,0 +1,1 @@
+ALTER TABLE "library_items" ADD CONSTRAINT "library_items_active_analysis_run_id_ai_analysis_runs_id_fk" FOREIGN KEY ("active_analysis_run_id") REFERENCES "public"."ai_analysis_runs"("id") ON DELETE no action ON UPDATE no action;
