@@ -41,6 +41,8 @@ features, or content feed.
   objects visible in the image.
 - **Organize without moving files.** Tags and collections are virtual; one reference can belong in
   several contexts.
+- **Browse AI-made smart categories.** Analyzed references gather automatically by subject, style,
+  mood, and possible use case while manual collections remain fully yours.
 - **Search in visual language.** Find references through titles, notes, styles, colours, moods,
   objects, layout patterns, and inspiration reasons.
 - **Keep personal judgment in charge.** Handwritten titles, descriptions, notes, and tags are

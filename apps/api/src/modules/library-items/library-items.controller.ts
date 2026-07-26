@@ -38,6 +38,11 @@ export class LibraryItemsController {
     });
   }
 
+  @Get("smart-categories")
+  smartCategories() {
+    return this.items.smartCategories();
+  }
+
   @Get(":id")
   detail(@Param("id") id: string) {
     return this.items.detail(id);

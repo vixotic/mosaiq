@@ -10,7 +10,13 @@ import {
   processingJobs,
   tags,
 } from "@mosaiq/database";
-import type { LibraryItemDetail, LibraryItemSummary, UpdateLibraryItemInput } from "@mosaiq/shared";
+import type {
+  LibraryItemDetail,
+  LibraryItemSummary,
+  SmartCategoriesResponse,
+  SmartCategory,
+  UpdateLibraryItemInput,
+} from "@mosaiq/shared";
 import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { DATABASE } from "../../database.provider.js";
 
@@ -90,6 +96,72 @@ export class LibraryItemsService {
       .offset((page - 1) * pageSize);
     const items = await Promise.all(rows.map((row) => this.summary(row.id)));
     return { items, page, pageSize, total, hasNextPage: page * pageSize < total };
+  }
+
+  async smartCategories(): Promise<SmartCategoriesResponse> {
+    const rows = await this.db
+      .select({
+        itemId: libraryItems.id,
+        assetId: assets.id,
+        result: aiAnalysisRuns.validatedResult,
+      })
+      .from(libraryItems)
+      .innerJoin(assets, eq(libraryItems.assetId, assets.id))
+      .innerJoin(aiAnalysisRuns, eq(libraryItems.activeAnalysisRunId, aiAnalysisRuns.id))
+      .where(isNull(libraryItems.deletedAt));
+
+    type CategoryAccumulator = SmartCategory & { itemIds: Set<string> };
+    const categories = new Map<string, CategoryAccumulator>();
+    let uncategorizedItemCount = 0;
+
+    for (const row of rows) {
+      const facets: Array<[SmartCategory["kind"], string[]]> = [
+        ["domain", row.result?.domains ?? []],
+        ["style", row.result?.styles ?? []],
+        ["mood", row.result?.moods ?? []],
+        ["useCase", row.result?.useCases ?? []],
+      ];
+      const itemCategories = new Set<string>();
+
+      for (const [kind, labels] of facets) {
+        for (const rawLabel of labels) {
+          const label = rawLabel.trim();
+          if (!label) continue;
+          const key = `${kind}:${label.toLocaleLowerCase()}`;
+          itemCategories.add(key);
+          const existing = categories.get(key);
+          if (existing) {
+            existing.itemIds.add(row.itemId);
+            if (
+              existing.coverThumbnailUrls.length < 3 &&
+              !existing.coverThumbnailUrls.includes(`/api/assets/${row.assetId}/thumbnail`)
+            ) {
+              existing.coverThumbnailUrls.push(`/api/assets/${row.assetId}/thumbnail`);
+            }
+          } else {
+            categories.set(key, {
+              label,
+              kind,
+              imageCount: 1,
+              coverThumbnailUrls: [`/api/assets/${row.assetId}/thumbnail`],
+              itemIds: new Set([row.itemId]),
+            });
+          }
+        }
+      }
+
+      if (itemCategories.size === 0) uncategorizedItemCount += 1;
+    }
+
+    const result = Array.from(categories.values())
+      .map(({ itemIds, ...category }) => ({ ...category, imageCount: itemIds.size }))
+      .sort((a, b) => b.imageCount - a.imageCount || a.label.localeCompare(b.label));
+
+    return {
+      categories: result,
+      analyzedItemCount: rows.length,
+      uncategorizedItemCount,
+    };
   }
 
   async detail(id: string): Promise<LibraryItemDetail> {

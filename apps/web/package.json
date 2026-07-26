@@ -11,6 +11,7 @@
     "lint": "eslint src"
   },
   "dependencies": {
+    "@fontsource/poppins": "^5.2.6",
     "@hookform/resolvers": "^5.2.1",
     "@mosaiq/shared": "workspace:*",
     "@tanstack/react-query": "^5.83.0",

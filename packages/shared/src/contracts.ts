@@ -101,6 +101,21 @@ export const libraryItemSummarySchema = z.object({
 });
 export type LibraryItemSummary = z.infer<typeof libraryItemSummarySchema>;
 
+export const smartCategorySchema = z.object({
+  label: z.string(),
+  kind: z.enum(["domain", "style", "mood", "useCase"]),
+  imageCount: z.number().int().positive(),
+  coverThumbnailUrls: z.array(z.string()).max(3),
+});
+export type SmartCategory = z.infer<typeof smartCategorySchema>;
+
+export const smartCategoriesResponseSchema = z.object({
+  categories: z.array(smartCategorySchema),
+  analyzedItemCount: z.number().int().nonnegative(),
+  uncategorizedItemCount: z.number().int().nonnegative(),
+});
+export type SmartCategoriesResponse = z.infer<typeof smartCategoriesResponseSchema>;
+
 export const activeAnalysisSchema = z.object({
   id: idSchema,
   providerId: z.string(),

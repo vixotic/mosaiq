@@ -55,6 +55,13 @@ Search combines ordinary PostgreSQL text matching with relational filters for ta
 The API contract does not depend on a particular search implementation, leaving room for richer
 semantic or visual similarity later without changing how the rest of the application uses search.
 
+## Smart categories
+
+The Smart categories view turns the active AI analysis into a living browse layer. It groups
+references by subject/domain, visual style, mood, and likely use case, then links each group back to
+the matching library search. Categories update as analyses complete and do not create, move, or
+overwrite the user's manual collections.
+
 ## Project layout
 
 ```text

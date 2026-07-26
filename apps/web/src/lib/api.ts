@@ -4,6 +4,7 @@ import {
   libraryItemSummarySchema,
   pageResponseSchema,
   settingsStatusSchema,
+  smartCategoriesResponseSchema,
   type BatchUploadResponse,
   type CollectionSummary,
   type LibraryItemDetail,
@@ -98,6 +99,10 @@ export const api = {
 
   async getLibraryItem(id: string): Promise<LibraryItemDetail> {
     return libraryItemDetailSchema.parse(await request(`/library-items/${id}`));
+  },
+
+  async listSmartCategories() {
+    return smartCategoriesResponseSchema.parse(await request("/library-items/smart-categories"));
   },
 
   async updateLibraryItem(id: string, input: UpdateLibraryItemInput): Promise<LibraryItemDetail> {
@@ -205,6 +210,7 @@ export const queryKeys = {
   libraryRoot: ["library"] as const,
   detail: (id: string) => ["library-item", id] as const,
   collections: ["collections"] as const,
+  smartCategories: ["smart-categories"] as const,
   collection: (id: string, page: number) => ["collection", id, page] as const,
   settings: ["settings"] as const,
 };
