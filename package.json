@@ -15,7 +15,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "pnpm --filter @mosaiq/database db:generate",
-    "db:migrate": "pnpm --filter @mosaiq/database db:migrate"
+    "db:migrate": "pnpm --filter @mosaiq/database db:migrate",
+    "storage:migrate-to-oci": "pnpm --filter @mosaiq/api storage:migrate-to-oci",
+    "auth:hash-password": "pnpm --filter @mosaiq/api auth:hash-password"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",

@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FolderHeart,
+  LogOut,
   Menu,
   Moon,
   Settings,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useAuth } from "../features/auth";
 import { IconButton } from "./ui";
 
 const links = [
@@ -23,6 +25,7 @@ const links = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
+  const { session, logout, loggingOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem("mosaiq-sidebar") === "collapsed",
@@ -42,9 +45,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     localStorage.setItem("mosaiq-sidebar", collapsed ? "collapsed" : "expanded");
   }, [collapsed]);
 
-  const pattern = pathname.startsWith("/smart-categories") || pathname.startsWith("/collections")
-    ? "grid"
-    : "dots";
+  const pattern =
+    pathname.startsWith("/smart-categories") || pathname.startsWith("/collections")
+      ? "grid"
+      : "dots";
 
   return (
     <div className={`app-shell ${collapsed ? "app-shell--collapsed" : ""}`}>
@@ -92,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="sidebar__note">
           <span>Private by default</span>
-          <p>Your originals stay on this machine.</p>
+          <p>Your originals stay in private storage.</p>
         </div>
         <button
           className="theme-toggle"
@@ -103,6 +107,19 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           {dark ? <Sun size={17} /> : <Moon size={17} />}
           <span>{dark ? "Light mode" : "Dark mode"}</span>
+        </button>
+        <button
+          className="account-action"
+          type="button"
+          title={collapsed ? "Sign out" : undefined}
+          disabled={loggingOut}
+          onClick={() => void logout()}
+        >
+          <LogOut size={17} />
+          <span>
+            Sign out
+            <small>{session.owner.username}</small>
+          </span>
         </button>
       </aside>
       <main className={`main-content main-content--${pattern}`}>{children}</main>

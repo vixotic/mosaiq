@@ -1,12 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { AnalysisResult } from "@mosaiq/shared";
 import type postgres from "postgres";
-import { readFile } from "node:fs/promises";
-import { isAbsolute, relative, resolve } from "node:path";
 import sharp from "sharp";
 import { DATABASE_CLIENT } from "../../database.provider.js";
-import { loadConfig } from "../../config.js";
 import type { ProcessingJob } from "../processing-jobs/processing-job.types.js";
+import { StorageService } from "../storage/storage.service.js";
 import { AnalyzerError } from "./analyzer.types.js";
 import { AnalyzerRegistry } from "./analyzer-registry.service.js";
 
@@ -27,11 +25,10 @@ const normalizeTag = (label: string): string =>
 
 @Injectable()
 export class AnalysisExecutionService {
-  private readonly config = loadConfig();
-
   constructor(
     @Inject(DATABASE_CLIENT) private readonly sql: postgres.Sql,
     @Inject(AnalyzerRegistry) private readonly registry: AnalyzerRegistry,
+    @Inject(StorageService) private readonly storage: StorageService,
   ) {}
 
   async execute(job: ProcessingJob): Promise<void> {
@@ -78,7 +75,7 @@ export class AnalysisExecutionService {
     if (!run) throw new Error("Failed to create the analysis run.");
 
     try {
-      const source = await readFile(this.resolveStorageKey(item.storageKey));
+      const source = await this.storage.read(item.storageKey);
       const image = await sharp(source, { failOn: "error" })
         .rotate()
         .resize({
@@ -173,15 +170,5 @@ export class AnalysisExecutionService {
         where id = ${runId}
       `;
     });
-  }
-
-  private resolveStorageKey(storageKey: string): string {
-    const root = resolve(this.config.STORAGE_ROOT);
-    const target = resolve(root, storageKey);
-    const relation = relative(root, target);
-    if (isAbsolute(relation) || relation.startsWith("..")) {
-      throw new AnalyzerError("Stored asset path escapes the configured storage root.", false);
-    }
-    return target;
   }
 }

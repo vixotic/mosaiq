@@ -7,7 +7,7 @@
   <a href="https://github.com/vixotic/mosaiq/actions/workflows/ci.yml">
     <img src="https://github.com/vixotic/mosaiq/actions/workflows/ci.yml/badge.svg" alt="CI status" />
   </a>
-  <img src="https://img.shields.io/badge/personal%20project-local--first-6f8064" alt="Personal local-first project" />
+  <img src="https://img.shields.io/badge/personal%20library-private%20by%20default-6f8064" alt="Private personal library" />
   <img src="https://img.shields.io/badge/AI-Gemini%20%7C%20Ollama-bb8068" alt="Gemini and Ollama support" />
   <img src="https://img.shields.io/badge/Node.js-22%2B-343b32" alt="Node.js 22 or newer" />
 </div>
@@ -28,8 +28,8 @@ Mosaiq is my attempt at a more thoughtful personal library. It keeps the origina
 control, adds useful visual context with AI when I want it, and lets my own notes and decisions
 remain the source of truth.
 
-It is intentionally a **single-user hobby project**—no accounts, teams, subscriptions, social
-features, or content feed.
+It is intentionally a **single-owner hobby project**—private behind one login, with no teams,
+subscriptions, social features, or content feed.
 
 ## What it feels like
 
@@ -72,12 +72,20 @@ cd mosaiq
 corepack enable
 pnpm install
 cp .env.example .env
+pnpm auth:hash-password
+```
+
+Copy the generated Argon2id value into `AUTH_OWNER_PASSWORD_HASH` in `.env`, enclosed in single
+quotes so its `$` characters remain literal, and choose the owner name with
+`AUTH_OWNER_USERNAME`. The password itself is never stored. Then finish setup:
+
+```bash
 docker compose up -d postgres
 pnpm db:migrate
 pnpm dev
 ```
 
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173).
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173) and sign in.
 
 Mosaiq still works as a manual visual library when no AI service is configured. Set
 `AI_PROVIDER=mock` in `.env` for an entirely self-contained tour.
@@ -124,20 +132,27 @@ Originals and thumbnails live beneath `STORAGE_ROOT` (the default is `./storage`
 searchable metadata, relationships, processing state, and analysis history; it does not store the
 large image binaries.
 
+For an always-on installation, Mosaiq can instead use a private OCI Object Storage bucket while
+keeping all bucket credentials on the backend. See [OCI Object Storage](./docs/oci-object-storage.md)
+for the bucket, instance-principal, and migration setup.
+
 For a complete backup, keep these two pieces together:
 
 1. A PostgreSQL backup.
-2. A copy of the matching `storage/` directory.
+2. A copy of the active image store: the matching `storage/` directory or OCI bucket.
 
-The application has no authentication because it is designed to bind to the local machine. Do not
-expose the development server directly to the public internet. Put an authentication-aware proxy
-in front of it if you host it elsewhere.
+The library, image files, metadata, settings, and processing actions all require the configured
+owner session. Sign-in attempts are rate-limited, sessions can be revoked by signing out, and the
+browser cookie is inaccessible to frontend code. For an internet-facing installation, use HTTPS
+and a carefully configured reverse proxy; the production cookie is sent only over secure
+connections. See [Private owner access](./docs/authentication.md) for local and hosted settings.
 
 ## Useful commands
 
 ```bash
 pnpm dev          # start the API and web app
 pnpm db:migrate   # apply database migrations
+pnpm auth:hash-password
 pnpm typecheck
 pnpm lint
 pnpm test

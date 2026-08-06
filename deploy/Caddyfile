@@ -1,0 +1,13 @@
+mosaiq.vixotic.in {
+	root * /opt/mosaiq/apps/web/dist
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3001
+	}
+
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}

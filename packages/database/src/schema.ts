@@ -199,3 +199,18 @@ export const collectionItems = pgTable(
     index("collection_items_library_item_idx").on(table.libraryItemId),
   ],
 );
+
+export const ownerSessions = pgTable(
+  "owner_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("owner_sessions_token_hash_uidx").on(table.tokenHash),
+    index("owner_sessions_expiry_idx").on(table.expiresAt),
+  ],
+);

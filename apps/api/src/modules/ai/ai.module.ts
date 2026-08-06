@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { databaseProviders } from "../../database.provider.js";
+import { BackendModule } from "../backend.module.js";
 import { ProcessingJobsModule } from "../processing-jobs/processing-jobs.module.js";
 import { AiProvidersController } from "./ai-providers.controller.js";
 import { AnalysisExecutionService } from "./analysis-execution.service.js";
@@ -10,7 +11,7 @@ import { OllamaImageAnalyzer } from "./ollama-image-analyzer.js";
 import { ProcessingWorker } from "./processing-worker.service.js";
 
 @Module({
-  imports: [ProcessingJobsModule],
+  imports: [BackendModule, ProcessingJobsModule],
   controllers: [AiProvidersController],
   providers: [
     ...databaseProviders,

@@ -15,6 +15,13 @@
       "when": 1784955381001,
       "tag": "0001_aberrant_johnny_blaze",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785923179008,
+      "tag": "0002_fat_talos",
+      "breakpoints": true
     }
   ]
 }

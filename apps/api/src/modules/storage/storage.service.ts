@@ -1,10 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import type { OnModuleInit } from "@nestjs/common";
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import sharp from "sharp";
 import { loadConfig } from "../../config.js";
+import {
+  FilesystemStorageBackend,
+  OciObjectStorageBackend,
+  type BinaryStorageBackend,
+} from "./storage-backend.js";
 
 export class InvalidImageError extends Error {
   constructor(
@@ -28,20 +32,25 @@ export type InspectedImage = {
 export class StorageService implements OnModuleInit {
   private readonly config = loadConfig();
   private readonly root = resolve(this.config.STORAGE_ROOT);
-  private readonly originals = resolve(this.root, "originals");
-  private readonly thumbnails = resolve(this.root, "thumbnails");
-  private readonly temporary = resolve(this.root, ".tmp");
+  private readonly backend: BinaryStorageBackend =
+    this.config.STORAGE_DRIVER === "oci"
+      ? new OciObjectStorageBackend({
+          namespaceName: this.config.OCI_OBJECT_STORAGE_NAMESPACE,
+          bucketName: this.config.OCI_OBJECT_STORAGE_BUCKET,
+          region: this.config.OCI_OBJECT_STORAGE_REGION,
+          prefix: this.config.OCI_OBJECT_STORAGE_PREFIX,
+          authMode: this.config.OCI_AUTH_MODE,
+          ...(this.config.OCI_CONFIG_FILE ? { configFile: this.config.OCI_CONFIG_FILE } : {}),
+          configProfile: this.config.OCI_CONFIG_PROFILE,
+        })
+      : new FilesystemStorageBackend(this.root);
 
   async onModuleInit(): Promise<void> {
-    await Promise.all([
-      mkdir(this.originals, { recursive: true }),
-      mkdir(this.thumbnails, { recursive: true }),
-      mkdir(this.temporary, { recursive: true }),
-    ]);
+    await this.backend.initialize();
   }
 
   get displayPath(): string {
-    return this.root;
+    return this.backend.displayPath;
   }
 
   get maximumUploadBytes(): number {
@@ -49,14 +58,7 @@ export class StorageService implements OnModuleInit {
   }
 
   async health(): Promise<boolean> {
-    try {
-      const probe = resolve(this.temporary, `.probe-${randomUUID()}`);
-      await writeFile(probe, "");
-      await rm(probe);
-      return true;
-    } catch {
-      return false;
-    }
+    return this.backend.health();
   }
 
   async inspect(buffer: Buffer): Promise<InspectedImage> {
@@ -112,44 +114,45 @@ export class StorageService implements OnModuleInit {
     const id = randomUUID();
     const storageKey = `originals/${id}.${info.extension}`;
     const thumbnailKey = `thumbnails/${id}.webp`;
-    const originalPath = this.resolveKey(storageKey);
-    const thumbnailPath = this.resolveKey(thumbnailKey);
-    const tempOriginal = resolve(this.temporary, `${id}.${info.extension}`);
-    const tempThumbnail = resolve(this.temporary, `${id}.webp`);
+    const thumbnail = await sharp(buffer, { limitInputPixels: this.config.MAX_IMAGE_PIXELS })
+      .rotate()
+      .resize({ width: 640, height: 640, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+    const writtenKeys: string[] = [];
     try {
-      await writeFile(tempOriginal, buffer, { flag: "wx" });
-      await sharp(buffer, { limitInputPixels: this.config.MAX_IMAGE_PIXELS })
-        .rotate()
-        .resize({ width: 640, height: 640, fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 80 })
-        .toFile(tempThumbnail);
-      await rename(tempOriginal, originalPath);
-      await rename(tempThumbnail, thumbnailPath);
+      await this.backend.write(storageKey, buffer, info.mimeType);
+      writtenKeys.push(storageKey);
+      await this.backend.write(thumbnailKey, thumbnail, "image/webp");
+      writtenKeys.push(thumbnailKey);
       return { storageKey, thumbnailKey };
     } catch (error) {
-      await Promise.all([rm(tempOriginal, { force: true }), rm(tempThumbnail, { force: true })]);
+      await this.backend.remove(writtenKeys).catch(() => undefined);
       throw error;
     }
   }
 
   async remove(keys: string[]): Promise<void> {
-    await Promise.all(keys.map((key) => rm(this.resolveKey(key), { force: true })));
+    keys.forEach((key) => this.assertValidKey(key));
+    await this.backend.remove(keys);
   }
 
   async read(key: string): Promise<Buffer> {
-    return readFile(this.resolveKey(key));
+    this.assertValidKey(key);
+    return this.backend.read(key);
   }
 
   async exists(key: string): Promise<boolean> {
-    try {
-      await stat(this.resolveKey(key));
-      return true;
-    } catch {
-      return false;
-    }
+    this.assertValidKey(key);
+    return this.backend.exists(key);
   }
 
   resolveKey(key: string): string {
+    this.assertValidKey(key);
+    return resolve(this.root, key);
+  }
+
+  private assertValidKey(key: string): void {
     if (!key || key.includes("\0") || extname(key).length > 8) {
       throw new InvalidImageError("INVALID_STORAGE_KEY", "Invalid storage key.");
     }
@@ -157,6 +160,5 @@ export class StorageService implements OnModuleInit {
     if (path !== this.root && !path.startsWith(`${this.root}${sep}`)) {
       throw new InvalidImageError("INVALID_STORAGE_KEY", "Invalid storage key.");
     }
-    return path;
   }
 }

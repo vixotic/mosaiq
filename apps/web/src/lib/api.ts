@@ -13,7 +13,7 @@ import {
   type UpdateLibraryItemInput,
 } from "@mosaiq/shared";
 
-const API_ROOT = (import.meta.env.VITE_API_URL || "http://127.0.0.1:3001/api").replace(/\/$/, "");
+const API_ROOT = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
 
 export class ApiRequestError extends Error {
   constructor(
@@ -31,6 +31,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_ROOT}${path}`, {
     ...init,
     headers,
+    credentials: "include",
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {
@@ -38,6 +39,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       code?: string;
     } | null;
     const message = Array.isArray(body?.message) ? body.message.join(", ") : body?.message;
+    if (response.status === 401) window.dispatchEvent(new Event("mosaiq:unauthorized"));
     throw new ApiRequestError(
       message || `Request failed (${response.status})`,
       response.status,
@@ -50,7 +52,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function mediaUrl(path: string): string {
   if (/^(https?:|data:|blob:)/.test(path)) return path;
-  const origin = new URL(API_ROOT).origin;
+  const origin = new URL(API_ROOT, window.location.origin).origin;
   return `${origin}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
@@ -85,6 +87,21 @@ export type CollectionDetail = CollectionSummary & {
 };
 
 export const api = {
+  session() {
+    return request<AuthSession>("/auth/session");
+  },
+
+  login(input: { username: string; password: string }) {
+    return request<AuthenticatedSession>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  logout() {
+    return request<void>("/auth/logout", { method: "POST", body: JSON.stringify({}) });
+  },
+
   async listLibrary(params: LibraryParams) {
     const path = params.q ? "/search" : "/library-items";
     const data = await request<unknown>(
@@ -205,6 +222,14 @@ export const api = {
   },
 };
 
+export type AuthenticatedSession = {
+  authenticated: true;
+  owner: { username: string };
+  expiresAt: string;
+};
+
+export type AuthSession = AuthenticatedSession | { authenticated: false };
+
 export const queryKeys = {
   library: (params: LibraryParams) => ["library", params] as const,
   libraryRoot: ["library"] as const,
@@ -213,4 +238,5 @@ export const queryKeys = {
   smartCategories: ["smart-categories"] as const,
   collection: (id: string, page: number) => ["collection", id, page] as const,
   settings: ["settings"] as const,
+  session: ["session"] as const,
 };

@@ -3,6 +3,16 @@
 Mosaiq keeps two things together without confusing them: the image files themselves and everything
 that makes those images useful later.
 
+## Private owner access
+
+Mosaiq opens to one configured owner account. A successful login creates an opaque session whose
+hash, expiry, and revocation state live in PostgreSQL; the browser receives only a protected
+session cookie. Every library, media, metadata, settings, upload, and processing route is private.
+State-changing requests must also come from the configured web origin.
+
+There is deliberately no registration or account administration surface. See
+[Private owner access](./authentication.md) for setup and operational details.
+
 ## A reference enters the library
 
 When an image is imported, Mosaiq:
@@ -27,14 +37,15 @@ Personal edits live separately. A handwritten title, description, note, or tag t
 over an AI suggestion and is never overwritten by reanalysis. If a new analysis fails, the most
 recent successful result remains active.
 
-## Files on disk, relationships in PostgreSQL
+## Image storage, relationships in PostgreSQL
 
-Originals and thumbnails stay on the filesystem. PostgreSQL stores metadata, tags, collections,
-processing jobs, and analysis history. Mosaiq uses opaque storage keys in its API rather than
-revealing machine-specific filesystem paths.
+Originals and thumbnails can stay on the local filesystem or in a private OCI Object Storage
+bucket. PostgreSQL stores metadata, tags, collections, processing jobs, and analysis history.
+Mosaiq uses the same opaque storage keys in either mode, and the browser never receives filesystem
+paths or cloud credentials.
 
-The upload path is defensive: files are written to a controlled temporary location, moved to their
-final key, and cleaned up when a database operation fails.
+The upload path is defensive: originals and thumbnails are persisted before their database record
+is committed, and partial writes are cleaned up when an operation fails.
 
 ## A small background worker
 

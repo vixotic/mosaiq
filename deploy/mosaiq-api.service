@@ -1,0 +1,21 @@
+[Unit]
+Description=Mosaiq API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mosaiq
+Group=mosaiq
+WorkingDirectory=/opt/mosaiq
+EnvironmentFile=/etc/mosaiq/api.env
+ExecStart=/usr/bin/node /opt/mosaiq/apps/api/dist/main.js
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/mosaiq/storage
+
+[Install]
+WantedBy=multi-user.target
